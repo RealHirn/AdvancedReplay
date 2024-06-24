@@ -4,6 +4,7 @@ import java.io.File;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.List;
 
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -30,7 +31,10 @@ public class ConfigManager {
 	public static boolean RECORD_CHAT;
 	public static boolean SAVE_STOP, RECORD_STARTUP, USE_OFFLINE_SKINS, HIDE_PLAYERS, UPDATE_NOTIFY, USE_DATABASE, ADD_PLAYERS;
 	public static boolean WORLD_RESET;
-	
+
+	public static boolean USE_XP_BAR;
+
+
 	public static ReplayQuality QUALITY = ReplayQuality.HIGH;
 	
 	public static String DEATH_MESSAGE, LEAVE_MESSAGE, CHAT_FORMAT, JOIN_MESSAGE;
@@ -43,6 +47,7 @@ public class ConfigManager {
 			sqlCfg.set("database", "database");
 			sqlCfg.set("password", "password");
 			sqlCfg.set("prefix", "");
+			sqlCfg.set("properties", MySQLDatabase.DEFAULT_PROPERTIES);
 
 			try {
 				sqlCfg.save(sqlFile);
@@ -58,7 +63,7 @@ public class ConfigManager {
 			cfg.set("general.record_on_startup", false);
 			cfg.set("general.save_on_stop", false);
 			cfg.set("general.use_mysql", false);
-			cfg.set("general.use_offline_skins", true);
+			cfg.set("general.use_offline_skins", false);
 			cfg.set("general.quality", "high");
 			cfg.set("general.cleanup_replays", -1);
 			cfg.set("general.hide_players", false);
@@ -70,7 +75,8 @@ public class ConfigManager {
 			cfg.set("general.join_message", "&6{name} &7joined the game.");
 
 			cfg.set("replaying.world.reset_changes", false);
-			
+			cfg.set("replaying.use_xp_bar", true);
+
 			cfg.set("recording.blocks.enabled", true);
 			cfg.set("recording.blocks.real_changes", true);
 			cfg.set("recording.entities.enabled", false);
@@ -117,6 +123,8 @@ public class ConfigManager {
 		RECORD_ENTITIES = cfg.getBoolean("recording.entities.enabled");
 		RECORD_CHAT = cfg.getBoolean("recording.chat.enabled");
 
+		USE_XP_BAR = cfg.getBoolean("replaying.use_xp_bar", true);
+
 		if (USE_DATABASE) {
 			
 			String host = sqlCfg.getString("host");
@@ -125,8 +133,9 @@ public class ConfigManager {
 			String database = sqlCfg.getString("database");
 			String password = sqlCfg.getString("password");
 			String prefix = sqlCfg.getString("prefix", "");
+			List<String> properties = (List<String>) sqlCfg.getList("properties", MySQLDatabase.DEFAULT_PROPERTIES);
 
-			MySQLDatabase mysql = new MySQLDatabase(host, port, database, username, password, prefix);
+			MySQLDatabase mysql = new MySQLDatabase(host, port, database, username, password, prefix, properties);
 			DatabaseRegistry.registerDatabase(mysql);
 			DatabaseRegistry.getDatabase().getService().createReplayTable();
 			

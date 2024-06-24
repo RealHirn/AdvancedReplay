@@ -79,7 +79,9 @@ public class ReplayingUtils {
 		this.signatures = new HashMap<>();
 	}
 	
-	public void handleAction(ActionData action, ReplayData data, boolean reversed) {
+	public void handleAction(ActionData action, ReplayData data, ReplayingMode mode) {
+		boolean reversed = mode == ReplayingMode.REVERSED;
+
 		if (action.getType() == ActionType.SPAWN) {
 			if (!reversed) {
 				spawnNPC(action);
@@ -313,8 +315,17 @@ public class ReplayingUtils {
 			
 			if (action.getPacketData() instanceof FishingData) {
 				FishingData fishing = (FishingData) action.getPacketData();
-				spawnProjectile(null, fishing, replayer.getWatchingPlayer().getWorld(), npc.getId());
-				
+				int ownerId = replayer.getNPCList().getOrDefault(fishing.getOwner(), npc).getId();
+
+				if (mode == ReplayingMode.PLAYING) {
+					spawnProjectile(null, fishing, replayer.getWatchingPlayer().getWorld(), ownerId);
+				}
+
+				if (reversed && hooks.containsKey(fishing.getId())) {
+					despawn(null, new int[] { hooks.get(fishing.getId()) });
+					hooks.remove(fishing.getId());
+
+				}
 			}
 			
 			if (action.getPacketData() instanceof VelocityData) {
@@ -381,7 +392,7 @@ public class ReplayingUtils {
 		}
 
 		for (int i = currentTick; i < forwardTicks; i++) {
-			this.replayer.executeTick(i, false);
+			this.replayer.executeTick(i, ReplayingMode.FORWARD);
 		}
 		this.replayer.setCurrentTicks(forwardTicks);
 		this.replayer.setPaused(paused);
@@ -399,7 +410,7 @@ public class ReplayingUtils {
 		}
 
 		for (int i = currentTick; i > backwardTicks; i--) {
-			this.replayer.executeTick(i, true);
+			this.replayer.executeTick(i, ReplayingMode.REVERSED);
 		}
 		this.replayer.setCurrentTicks(backwardTicks);
 		this.replayer.setPaused(paused);
@@ -413,7 +424,7 @@ public class ReplayingUtils {
 
 			if ((targetTicks - 2) > 0) {
 				for (int i = currentTick; i > targetTicks; i--) {
-					this.replayer.executeTick(i, true);
+					this.replayer.executeTick(i, ReplayingMode.REVERSED);
 				}
 
 				this.replayer.setCurrentTicks(targetTicks);
@@ -425,7 +436,7 @@ public class ReplayingUtils {
 
 			if ((targetTicks + 2) < duration) {
 				for (int i = currentTick; i < targetTicks; i++) {
-					this.replayer.executeTick(i, false);
+					this.replayer.executeTick(i, ReplayingMode.FORWARD);
 				}
 				this.replayer.setCurrentTicks(targetTicks);
 				this.replayer.setPaused(false);
@@ -451,9 +462,10 @@ public class ReplayingUtils {
 		
 		if(VersionUtil.isCompatible(VersionEnum.V1_8)) {
 			npc.setData(new MetadataBuilder(this.replayer.getWatchingPlayer()).resetValue().getData());
+		} else if (VersionUtil.isAbove(VersionEnum.V1_21)) {
+			npc.setData(new WrappedDataWatcher());
 		} else {
 			npc.setData(new MetadataBuilder(this.replayer.getWatchingPlayer()).setArrows(0).resetValue().getData());
-
 		}
 		
 		if (ConfigManager.HIDE_PLAYERS && !action.getName().equals(this.replayer.getWatchingPlayer().getName())) {
@@ -524,13 +536,13 @@ public class ReplayingUtils {
 				if (id == 11) id = 10;
 				
 				if (ConfigManager.REAL_CHANGES) {
-					if (VersionUtil.isCompatible(VersionEnum.V1_13) || VersionUtil.isCompatible(VersionEnum.V1_14) || VersionUtil.isCompatible(VersionEnum.V1_15) || VersionUtil.isCompatible(VersionEnum.V1_16) || VersionUtil.isCompatible(VersionEnum.V1_17) || VersionUtil.isCompatible(VersionEnum.V1_18) || VersionUtil.isCompatible(VersionEnum.V1_19)) {
+					if (VersionUtil.isCompatible(VersionEnum.V1_13) || VersionUtil.isCompatible(VersionEnum.V1_14) || VersionUtil.isCompatible(VersionEnum.V1_15) || VersionUtil.isCompatible(VersionEnum.V1_16) || VersionUtil.isCompatible(VersionEnum.V1_17) || VersionUtil.isCompatible(VersionEnum.V1_18) || VersionUtil.isCompatible(VersionEnum.V1_19) || VersionUtil.isCompatible(VersionEnum.V1_20) || VersionUtil.isCompatible(VersionEnum.V1_21)) {
 						loc.getBlock().setType(getBlockMaterial(blockChange.getAfter()), true);
 					} else {
 						loc.getBlock().setTypeIdAndData(id, (byte) subId, true);
 					}
 				} else {
-					if (VersionUtil.isCompatible(VersionEnum.V1_13) || VersionUtil.isCompatible(VersionEnum.V1_14) || VersionUtil.isCompatible(VersionEnum.V1_15) || VersionUtil.isCompatible(VersionEnum.V1_16) || VersionUtil.isCompatible(VersionEnum.V1_17) || VersionUtil.isCompatible(VersionEnum.V1_18) || VersionUtil.isCompatible(VersionEnum.V1_19)) {
+					if (VersionUtil.isCompatible(VersionEnum.V1_13) || VersionUtil.isCompatible(VersionEnum.V1_14) || VersionUtil.isCompatible(VersionEnum.V1_15) || VersionUtil.isCompatible(VersionEnum.V1_16) || VersionUtil.isCompatible(VersionEnum.V1_17) || VersionUtil.isCompatible(VersionEnum.V1_18) || VersionUtil.isCompatible(VersionEnum.V1_19) || VersionUtil.isCompatible(VersionEnum.V1_20) || VersionUtil.isCompatible(VersionEnum.V1_21)) {
 						replayer.getWatchingPlayer().sendBlockChange(loc, getBlockMaterial(blockChange.getAfter()), (byte) subId);
 					} else {
 						replayer.getWatchingPlayer().sendBlockChange(loc, id, (byte) subId);
